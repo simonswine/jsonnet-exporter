@@ -1,64 +1,63 @@
 {
-  description = "ramda.guide";
-
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/master";
+    utils.url = "github:numtide/flake-utils";
     naersk = {
-      url = "github:nmattia/naersk";
+      url = github:nmattia/naersk;
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
-      flake = false;
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    utils = {
-      url = "github:numtide/flake-utils";
+    fenix = {
+      url = github:nix-community/fenix;
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { naersk, nixpkgs, rust-overlay, self, utils }:
+  outputs = { self, nixpkgs, utils, naersk, fenix }:
     utils.lib.eachDefaultSystem (system:
       let
-        rust-overlay' = import rust-overlay;
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ rust-overlay' ];
+        pkgs = nixpkgs.legacyPackages."${system}";
+        toolchain = with fenix.packages.${system};
+          combine [
+            minimal.rustc
+            minimal.cargo
+            #targets.x86_64-unknown-linux-musl.latest.rust-std
+            targets.armv7-unknown-linux-musleabihf.latest.rust-std
+          ];
+        naersk-lib = naersk.lib.${system}.override {
+          cargo = toolchain;
+          rustc = toolchain;
         };
-        rust = (pkgs.rustChannelOf {
-          date = "2021-01-28";
-          channel = "nightly";
-        }).rust;
-        naersk-lib = naersk.lib."${system}".override {
-          cargo = rust;
-          rustc = rust;
+      in
+      rec {
+        # `nix build`
+        packages.my-project = naersk-lib.buildPackage {
+          src = ./.;
+
+          #nativeBuildInputs = with pkgs; [ pkgsStatic.stdenv.cc ];
+            nativeBuildInputs = with pkgs; [
+            pkgsCross.muslpi.stdenv.cc
+          ];
+          #CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
+          CARGO_BUILD_TARGET = "armv7-unknown-linux-musleabihf";
+          CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
+
+
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER = with pkgs.pkgsCross.muslpi.stdenv;
+            "${cc}/bin/${cc.targetPrefix}gcc";
+
+
+          doCheck = false;
         };
-      in rec {
-        packages = utils.lib.flattenTree {
-          mdbook = pkgs.mdbook;
-          news = naersk-lib.buildPackage {
-            pname = "news";
-            root = ./src/news;
-          };
+        defaultPackage = packages.my-project;
+
+        # `nix run`
+        apps.my-project = utils.lib.mkApp {
+          drv = packages.my-project;
         };
+        defaultApp = apps.my-project;
 
-        defaultPackage = pkgs.mdbook;
-
-        apps.book = utils.lib.mkApp {
-          drv = pkgs.mdbook;
-        };
-
-        apps.news = utils.lib.mkApp {
-          drv = packages.news;
-        };
-
-        defaultApp = apps.book;
-
+        # `nix develop`
         devShell = pkgs.mkShell {
-          buildInputs = [ pkgs.mdbook ];
-          nativeBuildInputs = [ rust ];
+          nativeBuildInputs = with pkgs; [ rustc cargo ];
         };
-      }
-    );
+      });
 }
