@@ -1,0 +1,77 @@
+modules:
+  hello_world:
+    jsonnet: |
+      { process(input):: {
+        hello_world: {
+          type: 'gauge',
+          label_names: ['name'],
+          help: 'a hello world metric',
+          series: [{
+            label_values: [input.name],
+            value: 1,
+          }],
+        },
+      } }
+    tests:
+      - input: |
+          {"name":"Joe"}
+        output: |
+          # HELP hello_world a hello world metric
+          # TYPE hello_world gauge
+          hello_world{name="Joe"} 1
+      - input: |
+          {"name":"Doe"}
+        output: |
+          # HELP hello_world a hello world metric
+          # TYPE hello_world gauge
+          hello_world{name="Doe"} 1
+
+  sonnenbatterie:
+    jsonnet_path: ./sonnenbatterie.libsonnet
+    tests:
+      - input: |
+          {
+            "Apparent_output": 79,
+            "BackupBuffer": "0",
+            "BatteryCharging": false,
+            "BatteryDischarging": false,
+            "Consumption_Avg": 497,
+            "Consumption_W": 505,
+            "Fac": 49.98500061035156,
+            "FlowConsumptionBattery": false,
+            "FlowConsumptionGrid": true,
+            "FlowConsumptionProduction": true,
+            "FlowGridBattery": false,
+            "FlowProductionBattery": false,
+            "FlowProductionGrid": false,
+            "GridFeedIn_W": -39,
+            "IsSystemInstalled": 1,
+            "OperatingMode": "2",
+            "Pac_total_W": -6,
+            "Production_W": 451,
+            "RSOC": 98,
+            "RemainingCapacity_W": 7302,
+            "Sac1": 25,
+            "Sac2": 26,
+            "Sac3": 28,
+            "SystemStatus": "OnGrid",
+            "Timestamp": "2021-05-15 19:49:47",
+            "USOC": 98,
+            "Uac": 237,
+            "Ubat": 50,
+            "dischargeNotAllowed": false,
+            "generator_autostart": false
+          }
+        output: |
+          # HELP solar_battery_charge_percent Percentage of battery charge.
+          # TYPE solar_battery_charge_percent gauge
+          solar_battery_charge_percent 98
+          # HELP solar_battery_grid_frequency_hz Grid frequency in Hz
+          # TYPE solar_battery_grid_frequency_hz gauge
+          solar_battery_grid_frequency_hz 49.98500061035156
+          # HELP solar_battery_grid_voltage Grid voltage in V
+          # TYPE solar_battery_grid_voltage gauge
+          solar_battery_grid_voltage 237
+          # HELP solar_battery_voltage Battery voltage in V
+          # TYPE solar_battery_voltage gauge
+          solar_battery_voltage 50

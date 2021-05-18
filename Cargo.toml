@@ -1,0 +1,25 @@
+[package]
+name = "jsonnet-exporter"
+version = "0.1.0"
+authors = ["Christian Simon <simon@swine.de>"]
+edition = "2018"
+
+[dependencies]
+
+env_logger = "0.7.1"
+log = "0.4.8"
+prometheus_exporter = "0.8"
+tokio = "0.1.21"
+futures = "0.1.29"
+clap = "3.0.0-beta.2"
+
+serde_json = "1.0"
+serde_yaml = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+
+pretty_assertions = "0.7"
+
+jrsonnet-parser = { git = "https://github.com/simonswine/jrsonnet.git",    rev = "e1f3eca2b5f50a4ff9c65309f5f2dd1d568f432c"}
+jrsonnet-evaluator = { git = "https://github.com/simonswine/jrsonnet.git", rev = "e1f3eca2b5f50a4ff9c65309f5f2dd1d568f432c"}
+jrsonnet-types = { git = "https://github.com/simonswine/jrsonnet.git",     rev = "e1f3eca2b5f50a4ff9c65309f5f2dd1d568f432c"}
+jrsonnet-interner = { git = "https://github.com/simonswine/jrsonnet.git",  rev = "e1f3eca2b5f50a4ff9c65309f5f2dd1d568f432c"}
