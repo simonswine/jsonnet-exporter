@@ -7,20 +7,20 @@ modules:
           label_names: ['name'],
           help: 'a hello world metric',
           series: [{
-            label_values: [input.name],
+            label_values: [input.body.name],
             value: 1,
           }],
         },
       } }
     tests:
       - input: |
-          {"name":"Joe"}
+          {"body":{"name":"Joe"}}
         output: |
           # HELP hello_world a hello world metric
           # TYPE hello_world gauge
           hello_world{name="Joe"} 1
       - input: |
-          {"name":"Doe"}
+          {"body":{"name":"Doe"}}
         output: |
           # HELP hello_world a hello world metric
           # TYPE hello_world gauge
@@ -30,7 +30,7 @@ modules:
     jsonnet_path: ./sonnenbatterie.libsonnet
     tests:
       - input: |
-          {
+          { "body" : {
             "Apparent_output": 79,
             "BackupBuffer": "0",
             "BatteryCharging": false,
@@ -61,7 +61,7 @@ modules:
             "Ubat": 50,
             "dischargeNotAllowed": false,
             "generator_autostart": false
-          }
+          }}
         output: |
           # HELP solar_battery_charge_percent Percentage of battery charge.
           # TYPE solar_battery_charge_percent gauge
@@ -75,3 +75,37 @@ modules:
           # HELP solar_battery_voltage Battery voltage in V
           # TYPE solar_battery_voltage gauge
           solar_battery_voltage 50
+
+  nhs_covid_vaccination_age:
+    jsonnet: |
+      local find_age(s) =
+        // use native regex function
+        local result = std.native('regexMatch')(' aged (\\d+)', s);
+
+        if std.length(result) < 1 then null
+        else
+          if std.length(result[0]) < 2 then null
+          else
+            local val = result[0][1];
+            if val == null then null
+            else std.parseInt(val)
+        ;
+
+      {
+        process(input):: {
+          nhs_covid_vaccination_age: {
+            type: 'gauge',
+            help: 'The minimum age to be elegible for vaccination',
+            series: [{
+              value: find_age(input.body),
+            }],
+          },
+        },
+      }
+    tests:
+      - input: |
+          {"body": "you're aged 36 or over"}
+        output: |
+          # HELP nhs_covid_vaccination_age The minimum age to be elegible for vaccination
+          # TYPE nhs_covid_vaccination_age gauge
+          nhs_covid_vaccination_age 36

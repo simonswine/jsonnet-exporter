@@ -2,7 +2,7 @@
 
 // this is an example of a sonnenbatterie /v1/status endpoint
 // sonnenbatterie eco 8.03 9010 ND
-local input = {
+local input = { body: {
   Apparent_output: 79,
   BackupBuffer: '0',
   BatteryCharging: false,
@@ -33,7 +33,7 @@ local input = {
   Ubat: 50,
   dischargeNotAllowed: false,
   generator_autostart: false,
-};
+} };
 
 local process(input) = {
   local this = self,
@@ -41,28 +41,28 @@ local process(input) = {
     type: 'gauge',
     help: 'Percentage of battery charge.',
     series: [{
-      value: input.RSOC,
+      value: input.body.RSOC,
     }],
   },
   solar_battery_grid_voltage: {
     type: 'gauge',
     help: 'Grid voltage in V',
     series: [{
-      value: input.Uac,
+      value: input.body.Uac,
     }],
   },
   solar_battery_voltage: {
     type: 'gauge',
     help: 'Battery voltage in V',
     series: [{
-      value: input.Ubat,
+      value: input.body.Ubat,
     }],
   },
   solar_battery_grid_frequency_hz: {
     type: 'gauge',
     help: 'Grid frequency in Hz',
     series: [{
-      value: input.Fac,
+      value: input.body.Fac,
     }],
   },
 
