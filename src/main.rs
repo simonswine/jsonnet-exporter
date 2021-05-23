@@ -10,7 +10,9 @@ use std::fs::File;
 use std::io::BufReader;
 use std::net::SocketAddr;
 use std::{any::Any, io::prelude::*, path::PathBuf, rc::Rc};
-use warp::{http::header::HeaderValue, http::header::CONTENT_TYPE, http::Response, Filter};
+use warp::{
+    http::header::HeaderValue, http::header::CONTENT_TYPE, http::Response, Filter, Rejection, Reply,
+};
 
 use prometheus::{labels, opts, register_counter, register_gauge, register_histogram_vec};
 use prometheus::{Counter, Encoder, Gauge, HistogramVec, TextEncoder};
@@ -265,41 +267,6 @@ struct Series {
     label_values: Option<Vec<String>>,
     value: f64,
 }
-
-fn iterate(key: Option<String>, value: &serde_json::Value) {
-    use serde_json::Value::*;
-    match value {
-        Null | Bool(_) | String(_) | Number(_) => {}
-        Array(a) => {
-            for value in a {
-                iterate(key.clone(), value)
-            }
-        }
-        Object(o) => {
-            let mut is_leaf = true;
-            for (key, value) in o {
-                // skip labels as it's the only allowed leaf object
-                if key == "labels" {
-                    continue;
-                }
-
-                // determine if children are nested arrays or objects,
-                match value {
-                    Array(_) | Object(_) => {
-                        is_leaf = false;
-                    }
-                    _ => {}
-                };
-                iterate(Some(key.clone()), &value);
-            }
-            if is_leaf {
-                info!("leaf node: {:?}", o);
-            }
-        }
-    }
-}
-
-use warp::{Rejection, Reply};
 
 #[derive(Debug)]
 struct MissingQueryParameter {
