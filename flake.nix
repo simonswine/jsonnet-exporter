@@ -19,35 +19,63 @@
           combine [
             minimal.rustc
             minimal.cargo
-            #targets.x86_64-unknown-linux-musl.latest.rust-std
+            targets.x86_64-unknown-linux-musl.latest.rust-std
             targets.armv7-unknown-linux-musleabihf.latest.rust-std
           ];
+
         naersk-lib = naersk.lib.${system}.override {
           cargo = toolchain;
           rustc = toolchain;
         };
+
+        buildJsonnetExporter = target: sdk: args: naersk-lib.buildPackage
+          {
+            src = ./.;
+
+            nativeBuildInputs = [
+              pkgs.pkgconfig
+              sdk.stdenv.cc
+              sdk.openssl
+            ];
+
+            CARGO_BUILD_TARGET = target;
+            CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
+
+            TARGET_CC = with sdk.stdenv;
+              "${cc}/bin/${cc.targetPrefix}gcc";
+
+            "CARGO_TARGET_${builtins.replaceStrings [ "-" ] [ "_" ] (pkgs.lib.toUpper target)}_LINKER" = with sdk.stdenv;
+              "${cc}/bin/${cc.targetPrefix}gcc";
+
+            OPENSSL_STATIC = "1";
+          } // args;
+
+        buildDocker = { build }:
+          pkgs.dockerTools.buildLayeredImage {
+            name = "simonswine/jsonnet-exporter";
+            # TODO: Find a way to determine from git tags
+            tag = "0.1.0";
+            contents = [
+              pkgs.pkgsStatic.busybox
+              pkgs.cacert
+              build
+            ];
+            config = {
+              Cmd = "jsonnet-exporter";
+            };
+          };
+
       in
       rec {
-        # `nix build`
-        packages.my-project = naersk-lib.buildPackage {
-          src = ./.;
+        packages.linux-amd64 =
+          buildJsonnetExporter "x86_64-unknown-linux-musl" pkgs.pkgsStatic { };
 
-          #nativeBuildInputs = with pkgs; [ pkgsStatic.stdenv.cc ];
-            nativeBuildInputs = with pkgs; [
-            pkgsCross.muslpi.stdenv.cc
-          ];
-          #CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
-          CARGO_BUILD_TARGET = "armv7-unknown-linux-musleabihf";
-          CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
+        packages.linux-armv7 =
+          buildJsonnetExporter "armv7-unknown-linux-musleabihf" pkgs.pkgsCross.muslpi { };
 
+        defaultPackage = buildJsonnetExporter { target = "target"; };
 
-          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER = with pkgs.pkgsCross.muslpi.stdenv;
-            "${cc}/bin/${cc.targetPrefix}gcc";
-
-
-          doCheck = false;
-        };
-        defaultPackage = packages.my-project;
+        packages.dockerImage = buildDocker { build = packages.linux-amd64; };
 
         # `nix run`
         apps.my-project = utils.lib.mkApp {
@@ -57,7 +85,7 @@
 
         # `nix develop`
         devShell = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [ rustc cargo ];
+          nativeBuildInputs = with pkgs; [ rustc cargo pkgconfig openssl lldb ];
         };
       });
 }
